@@ -17,9 +17,8 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
-
+from jinja2 import Template
 from .data_utils import SLOTS
-
 
 DEFAULT_TOOL_PROMPT = (
     "You have access to the following tools:\n{tool_text}"
@@ -31,10 +30,61 @@ DEFAULT_TOOL_PROMPT = (
     "```\n"
 )
 
-
 GLM4_TOOL_PROMPT = (
     "你是一个名为 ChatGLM 的人工智能助手。你是基于智谱AI训练的语言模型 GLM-4 模型开发的，"
     "你的任务是针对用户的问题和要求提供适当的答复和支持。# 可用工具{tool_text}"
+)
+
+JSON_TOOL_PROMPT = Template(
+    """
+{#- 渲染工具Name与Detail函数 -#}
+{% macro render_tool(tool, with_detail) -%}
+{{- tool.name -}}
+{%- if with_detail and tool.parameters -%}
+: {{ tool.description }}
+tool input params json format(JsonSchema): {{ tool.parameters }}
+{% endif -%}
+{%- endmacro -%}
+Answer the following questions as best you can. You have access to the following tools:
+
+{% for tool in tools -%}
+{{ render_tool(tool, true) }}
+{% endfor %}
+
+The way you use the tools is by specifying a json blob.
+Specifically, this json should have a `action` key (with the name of the tool to use) and a `action_input` key (with \
+the input to the tool going here).
+
+The only values that should be in the "action" field are: 
+
+{% for tool in tools -%}
+{{ render_tool(tool, false) }}
+{% endfor %}
+
+The $JSON_BLOB should only contain a SINGLE action, do NOT return a list of multiple actions. Here is an example of a \
+valid $JSON_BLOB:
+
+{% raw %}
+```
+{
+  "action": $TOOL_NAME,
+  "action_input": $INPUT
+}
+```
+{% endraw %}
+
+Always use the following format:
+
+Question: The input question you must answer
+Think: You should always think about what to do
+Action:
+```
+$JSON_BLOB
+```
+Observation__STOP_HERE__: The result of the action
+... (This think/action/observation__STOP_HERE__ can be repeated N times)
+Think: I now know the final answer
+Final Answer: The final answer to the original input question"""
 )
 
 
@@ -143,5 +193,8 @@ class GLM4ToolUtils(ToolUtils):
 class JsonToolUtils(DefaultToolUtils):
     @staticmethod
     def get_function_slots() -> SLOTS:
-        return ["{\"Action\": \"{{name}}\", \"Action Input\": \"{{arguments}}\"}"]
+        return ["{\"action\": \"{{name}}\", \"action_input\": \"{{arguments}}\"}"]
 
+    @staticmethod
+    def tool_formatter(tools: List[Dict[str, Any]]) -> str:
+        return JSON_TOOL_PROMPT.render(tools=tools,with_detail=True)

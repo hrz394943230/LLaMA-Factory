@@ -130,6 +130,9 @@ class ToolFormatter(Formatter):
         elif self.tool_format == "glm4":
             self._tool_formatter = GLM4ToolUtils.tool_formatter
             self._tool_extractor = GLM4ToolUtils.tool_extractor
+        elif self.tool_format == "json":
+            self._tool_formatter = JsonToolUtils.tool_formatter
+            self._tool_extractor = JsonToolUtils.tool_extractor
         else:
             raise NotImplementedError("Tool format {} was not found.".format(self.tool_format))
 
@@ -143,3 +146,4 @@ class ToolFormatter(Formatter):
 
     def extract(self, content: str) -> Union[str, List[Tuple[str, str]]]:
         return self._tool_extractor(content)
+

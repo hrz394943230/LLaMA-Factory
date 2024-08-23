@@ -134,8 +134,71 @@ def test_function_json_formatter():
         print(f"Failed to parse JSON: {res}")
         raise e
     assert res == [
-        '{"Action": "tool_name", "Action Input": "{\\"foo\\": \\"bar\\", \\"size\\": 10}"}'
+        '{"action": "tool_name", "action_input": "{\\"foo\\": \\"bar\\", \\"size\\": 10}"}'
     ]
-    assert res == [
-        """{"Action": "tool_name", "Action Input": "{\\"foo\\": \\"bar\\", \\"size\\": 10}"}"""
+
+
+def test_json_tool_formatter():
+    formatter = ToolFormatter(tool_format="json")
+    tools = [
+        {
+            "name": "test_tool",
+            "description": "tool_desc",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "foo": {"type": "string", "description": "foo_desc"},
+                    "bar": {"type": "number", "description": "bar_desc"},
+                },
+                "required": ["foo"],
+            },
+        }
     ]
+    expect = """
+test_tool: tool_desc
+tool input params json format(JsonSchema): {'type': 'object', 'properties': {'foo': {'type': 'string', 'description': 'foo_desc'}, 'bar': {'type': 'number', 'description': 'bar_desc'}}, 'required': ['foo']}
+"""
+    result = formatter.apply(content=json.dumps(tools))
+    assert expect in result[0]
+
+
+def test_multi_tools_json_tool_formatter():
+    formatter = ToolFormatter(tool_format="json")
+    tools = [
+        {
+            "name": "test_tool",
+            "description": "tool_desc",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "foo": {"type": "string", "description": "foo_desc"},
+                    "bar": {"type": "number", "description": "bar_desc"},
+                },
+                "required": ["foo"],
+            },
+        },
+        {
+            "name": "test_tool2",
+            "description": "tool_desc2",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "foo2": {"type": "string", "description": "foo_desc"},
+                    "bar2": {"type": "number", "description": "bar_desc"},
+                },
+                "required": ["foo"],
+            },
+        }
+    ]
+    expect1 = """
+test_tool: tool_desc
+tool input params json format(JsonSchema): {'type': 'object', 'properties': {'foo': {'type': 'string', 'description': 'foo_desc'}, 'bar': {'type': 'number', 'description': 'bar_desc'}}, 'required': ['foo']}
+"""
+    expect2 = """
+test_tool2: tool_desc2
+tool input params json format(JsonSchema): {'type': 'object', 'properties': {'foo2': {'type': 'string', 'description': 'foo_desc'}, 'bar2': {'type': 'number', 'description': 'bar_desc'}}, 'required': ['foo']}
+"""
+    result = formatter.apply(content=json.dumps(tools))
+    print(result[0])
+    assert expect1 in result[0]
+    assert expect2 in result[0]
