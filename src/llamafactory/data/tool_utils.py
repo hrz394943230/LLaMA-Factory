@@ -138,3 +138,10 @@ class GLM4ToolUtils(ToolUtils):
             return content
 
         return [(tool_name, json.dumps(arguments, ensure_ascii=False))]
+
+
+class JsonToolUtils(DefaultToolUtils):
+    @staticmethod
+    def get_function_slots() -> SLOTS:
+        return ["{\"Action\": \"{{name}}\", \"Action Input\": \"{{arguments}}\"}"]
+

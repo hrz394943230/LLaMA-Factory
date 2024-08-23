@@ -19,13 +19,13 @@ from dataclasses import dataclass, field
 from typing import List, Literal, Optional, Tuple, Union
 
 from .data_utils import SLOTS
-from .tool_utils import DefaultToolUtils, GLM4ToolUtils
+from .tool_utils import DefaultToolUtils, GLM4ToolUtils, JsonToolUtils
 
 
 @dataclass
 class Formatter(ABC):
     slots: SLOTS = field(default_factory=list)
-    tool_format: Optional[Literal["default", "glm4"]] = None
+    tool_format: Optional[Literal["default", "glm4","json"]] = None
 
     @abstractmethod
     def apply(self, **kwargs) -> SLOTS: ...
@@ -85,6 +85,8 @@ class FunctionFormatter(Formatter):
             self.slots = DefaultToolUtils.get_function_slots() + self.slots
         elif self.tool_format == "glm4":
             self.slots = GLM4ToolUtils.get_function_slots() + self.slots
+        elif self.tool_format == "json":
+            self.slots = JsonToolUtils.get_function_slots() + self.slots
         else:
             raise NotImplementedError("Tool format {} was not found.".format(self.tool_format))
 
@@ -97,7 +99,10 @@ class FunctionFormatter(Formatter):
                 tool_calls = [tool_calls]
 
             for tool_call in tool_calls:
-                functions.append((tool_call["name"], json.dumps(tool_call["arguments"], ensure_ascii=False)))
+                if self.tool_format == "json":
+                    functions.append((tool_call["name"], json.dumps(tool_call["arguments"], ensure_ascii=False).replace('"', '\\"')))
+                else:
+                    functions.append((tool_call["name"], json.dumps(tool_call["arguments"], ensure_ascii=False)))
 
         except json.JSONDecodeError:
             functions = []

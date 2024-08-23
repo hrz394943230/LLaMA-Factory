@@ -121,3 +121,21 @@ def test_glm4_tool_extractor():
     formatter = ToolFormatter(tool_format="glm4")
     result = """test_tool\n{"foo": "bar", "size": 10}\n"""
     assert formatter.extract(result) == [("test_tool", """{"foo": "bar", "size": 10}""")]
+
+
+def test_function_json_formatter():
+    formatter = FunctionFormatter(slots=[], tool_format="json")
+    tool_calls = json.dumps([{"name": "tool_name", "arguments": {"foo": "bar", "size": 10}}])
+    res = formatter.apply(content=tool_calls)
+    try:
+        json_data = json.loads(res[0])
+        assert isinstance(json_data,dict)
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse JSON: {res}")
+        raise e
+    assert res == [
+        '{"Action": "tool_name", "Action Input": "{\\"foo\\": \\"bar\\", \\"size\\": 10}"}'
+    ]
+    assert res == [
+        """{"Action": "tool_name", "Action Input": "{\\"foo\\": \\"bar\\", \\"size\\": 10}"}"""
+    ]
