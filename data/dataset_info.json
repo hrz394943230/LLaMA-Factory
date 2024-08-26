@@ -1,4 +1,12 @@
-{
+{"file_editor_with_tools": {
+  "file_name": "file_editor_with_tools.json",
+  "formatting": "sharegpt",
+  "columns": {
+    "messages": "conversations",
+    "system": "system",
+    "tools": "tools"
+  }
+},
   "identity": {
     "file_name": "identity.json"
   },
@@ -265,13 +273,6 @@
   "magpie_pro_300k": {
     "hf_hub_url": "Magpie-Align/Magpie-Pro-300K-Filtered",
     "formatting": "sharegpt"
-  },
-  "magpie_ultra": {
-    "hf_hub_url": "argilla/magpie-ultra-v0.1",
-    "columns": {
-      "prompt": "instruction",
-      "response": "response"
-    }
   },
   "web_instruct": {
     "hf_hub_url": "TIGER-Lab/WebInstructSub",
