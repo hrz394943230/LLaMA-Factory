@@ -186,7 +186,7 @@ def test_multi_tools_json_tool_formatter():
                     "foo2": {"type": "string", "description": "foo_desc"},
                     "bar2": {"type": "number", "description": "bar_desc"},
                 },
-                "required": ["foo"],
+                "required": ["foo2"],
             },
         }
     ]
@@ -196,9 +196,59 @@ tool input params json format(JsonSchema): {'type': 'object', 'properties': {'fo
 """
     expect2 = """
 test_tool2: tool_desc2
-tool input params json format(JsonSchema): {'type': 'object', 'properties': {'foo2': {'type': 'string', 'description': 'foo_desc'}, 'bar2': {'type': 'number', 'description': 'bar_desc'}}, 'required': ['foo']}
+tool input params json format(JsonSchema): {'type': 'object', 'properties': {'foo2': {'type': 'string', 'description': 'foo_desc'}, 'bar2': {'type': 'number', 'description': 'bar_desc'}}, 'required': ['foo2']}
 """
     result = formatter.apply(content=json.dumps(tools))
     print(result[0])
     assert expect1 in result[0]
     assert expect2 in result[0]
+
+
+def test_json_tool_extract_valid_json():
+    formatter = ToolFormatter(tool_format="json")
+    content = "```{\"action\": \"test_action\", \"action_input\": {\"key\": \"value\"}}```"
+    expected_result = [("test_action", "{\"key\": \"value\"}")]
+    result = formatter.extract(content)
+    assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
+def test_json_tool_extract_multiple_valid_json():
+    formatter = ToolFormatter(tool_format="json")
+    content = "```{\"action\": \"test_action1\", \"action_input\": {\"key1\": \"value1\"}}``` ```{\"action\": \"test_action2\", \"action_input\": {\"key2\": \"value2\"}}```"
+    expected_result = [("test_action1", "{\"key1\": \"value1\"}"), ("test_action2", "{\"key2\": \"value2\"}")]
+    result = formatter.extract(content)
+    assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
+def test_json_tool_extract_invalid_json():
+    formatter = ToolFormatter(tool_format="json")
+    content = "```{\"action\": \"test_action\", \"action_input\": {\"key\": \"value\"}```"
+    expected_result = content
+    result = formatter.extract(content)
+    assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
+def test_json_tool_extract_no_json():
+    formatter = ToolFormatter(tool_format="json")
+    content = "This is a test without any JSON."
+    expected_result = "This is a test without any JSON."
+    result = formatter.extract(content)
+    assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
+def test_json_tool_extract_nested_json():
+    formatter = ToolFormatter(tool_format="json")
+    content = "```{\"action\": \"test_action\", \"action_input\": {\"key\": {\"nested_key\": \"nested_value\"}}}```"
+    expected_result = [("test_action", "{\"key\": {\"nested_key\": \"nested_value\"}}")]
+    result = formatter.extract(content)
+    assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
+def test_json_tool_extract_mixed_content():
+    formatter = ToolFormatter(tool_format="json")
+    content = "Some text ```{\"action\": \"test_action\", \"action_input\": {\"key\": \"value\"}}``` more text"
+    expected_result = [("test_action", "{\"key\": \"value\"}")]
+    result = formatter.extract(content)
+    assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
+def test_json_tool_extract_mixed_no_quote_content():
+    formatter = ToolFormatter(tool_format="json")
+    content = "Some text {\"action\": \"test_action\", \"action_input\": {\"key\": \"value\"}}``` more text"
+    expected_result = [("test_action", "{\"key\": \"value\"}")]
+    result = formatter.extract(content)
+    assert result == expected_result, f"Expected {expected_result}, but got {result}"

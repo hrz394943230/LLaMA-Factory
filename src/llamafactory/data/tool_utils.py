@@ -18,6 +18,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
 from jinja2 import Template
+from regex import regex
+
 from .data_utils import SLOTS
 
 DEFAULT_TOOL_PROMPT = (
@@ -198,3 +200,37 @@ class JsonToolUtils(DefaultToolUtils):
     @staticmethod
     def tool_formatter(tools: List[Dict[str, Any]]) -> str:
         return JSON_TOOL_PROMPT.render(tools=tools,with_detail=True)
+
+    @staticmethod
+    def tool_extractor(content: str) -> Union[str, List[Tuple[str, str]]]:
+        if isinstance(content, str):
+            pattern = re.compile(r"```.*?(\{[^`]*)```", re.DOTALL | re.MULTILINE)
+            matches = pattern.findall(content)
+            all_matches = matches if matches else None
+            results = []
+            if all_matches:
+                for match in all_matches:
+                    try:
+                        tool_call_dict = json.loads(match)
+                        if 'action' in tool_call_dict and 'action_input' in tool_call_dict:
+                            action = tool_call_dict['action']
+                            action_input = tool_call_dict['action_input']
+                            results.append((action, json.dumps(action_input,ensure_ascii=False)))
+                    except json.JSONDecodeError:
+                        continue
+            else:
+                # 如果在未找到```{...}```的模式的情况下，降低使用更精确的正则表达式。这种情况需要匹配最外层大括号，
+                # 需要使用第三方正则模块: regex。递归查询效率低，故而是降级策略
+                pattern = regex.compile(r"\{(?:[^{}]|(?R))*\}")
+                for match in pattern.finditer(content):
+                    potential_json_str = match.group(0)
+                    try:
+                        tool_call_dict = json.loads(potential_json_str)
+                        if 'action' in tool_call_dict and 'action_input' in tool_call_dict:
+                            action = tool_call_dict['action']
+                            action_input = tool_call_dict['action_input']
+                            results.append((action, json.dumps(action_input)))
+                    except json.JSONDecodeError:
+                        continue
+            return results if results else content
+
