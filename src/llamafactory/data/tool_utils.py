@@ -192,10 +192,19 @@ class GLM4ToolUtils(ToolUtils):
         return [(tool_name, json.dumps(arguments, ensure_ascii=False))]
 
 
+class JsonSlotKeys:
+    action = "action"
+    action_input = "action_input"
+
+
 class JsonToolUtils(DefaultToolUtils):
     @staticmethod
     def get_function_slots() -> SLOTS:
-        return ["{\"action\": \"{{name}}\", \"action_input\": \"{{arguments}}\"}"]
+        slot_dict = {
+            JsonSlotKeys.action: "name",
+            JsonSlotKeys.action_input: "arguments"
+        }
+        return [json.dumps(slot_dict,ensure_ascii=False)]
 
     @staticmethod
     def tool_formatter(tools: List[Dict[str, Any]]) -> str:

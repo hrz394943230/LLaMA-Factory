@@ -16,10 +16,11 @@ import json
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from json import JSONDecodeError
 from typing import List, Literal, Optional, Tuple, Union
 
 from .data_utils import SLOTS
-from .tool_utils import DefaultToolUtils, GLM4ToolUtils, JsonToolUtils
+from .tool_utils import DefaultToolUtils, GLM4ToolUtils, JsonToolUtils,JsonSlotKeys
 
 
 @dataclass
@@ -100,7 +101,7 @@ class FunctionFormatter(Formatter):
 
             for tool_call in tool_calls:
                 if self.tool_format == "json":
-                    functions.append((tool_call["name"], json.dumps(tool_call["arguments"], ensure_ascii=False).replace('"', '\\"')))
+                    functions.append((tool_call["name"], tool_call["arguments"]))
                 else:
                     functions.append((tool_call["name"], json.dumps(tool_call["arguments"], ensure_ascii=False)))
 
@@ -111,7 +112,18 @@ class FunctionFormatter(Formatter):
         for name, arguments in functions:
             for slot in self.slots:
                 if isinstance(slot, str):
-                    slot = slot.replace("{{name}}", name).replace("{{arguments}}", arguments)
+                    if self.tool_format == "json":
+                        try:
+                            slot_json = json.loads(slot)
+                            slot_json[JsonSlotKeys.action] = name
+                            slot_json[JsonSlotKeys.action_input] = arguments
+                            slot = json.dumps(slot_json,ensure_ascii=False,indent=4)
+                        except JSONDecodeError as e:
+                            raise RuntimeError("slot is not json: {}".format(e))
+                        except KeyError as e:
+                            raise RuntimeError("can not find key {} in slot: {}".format(JsonSlotKeys.action_input, e))
+                    else:
+                        slot = slot.replace("{{name}}", name).replace("{{arguments}}", arguments)
                     elements.append(slot)
                 elif isinstance(slot, (dict, set)):
                     elements.append(slot)

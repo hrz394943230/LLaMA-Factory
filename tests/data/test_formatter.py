@@ -129,13 +129,66 @@ def test_function_json_formatter():
     res = formatter.apply(content=tool_calls)
     try:
         json_data = json.loads(res[0])
-        assert isinstance(json_data,dict)
+        assert isinstance(json_data, dict)
     except json.JSONDecodeError as e:
         print(f"Failed to parse JSON: {res}")
         raise e
-    assert res == [
-        '{"action": "tool_name", "action_input": "{\\"foo\\": \\"bar\\", \\"size\\": 10}"}'
-    ]
+    function_call = {
+        "action": "tool_name",
+        "action_input": {
+            "foo": "bar",
+            "size": 10,
+        },
+    }
+    assert res[0] == json.dumps(function_call,ensure_ascii=False,indent=4)
+
+
+def test_function_json_formatter_complex_args():
+    formatter = FunctionFormatter(slots=[], tool_format="json")
+    tool_calls = json.dumps([
+        {
+            "name": "ApplyLineEditTool",
+            "arguments": {
+                "uri": "file:///root/test.py",
+                "edit": {
+                    "start_line": 281,
+                    "end_line": 282,
+                    "new_text": (
+                        "        test_text1\n"
+                        "        test_text2\n"
+                    ),
+                },
+                "compute_undo_edits": False,
+                "auto_save": True,
+            },
+        }
+    ])
+    res = formatter.apply(content=tool_calls)
+    try:
+        json_data = json.loads(res[0])
+        assert isinstance(json_data, dict)
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse JSON: {res}")
+        raise e
+
+    function_call = {
+        "action": "ApplyLineEditTool",
+        "action_input": {
+            "uri": "file:///root/test.py",
+            "edit": {
+                "start_line": 281,
+                "end_line": 282,
+                "new_text": (
+                    "        test_text1\n"
+                    "        test_text2\n"
+                ),
+            },
+            "compute_undo_edits": False,
+            "auto_save": True,
+        },
+    }
+
+    assert res[0] == json.dumps(function_call, ensure_ascii=False, indent=4)
 
 
 def test_json_tool_formatter():
@@ -211,12 +264,14 @@ def test_json_tool_extract_valid_json():
     result = formatter.extract(content)
     assert result == expected_result, f"Expected {expected_result}, but got {result}"
 
+
 def test_json_tool_extract_multiple_valid_json():
     formatter = ToolFormatter(tool_format="json")
     content = "```{\"action\": \"test_action1\", \"action_input\": {\"key1\": \"value1\"}}``` ```{\"action\": \"test_action2\", \"action_input\": {\"key2\": \"value2\"}}```"
     expected_result = [("test_action1", "{\"key1\": \"value1\"}"), ("test_action2", "{\"key2\": \"value2\"}")]
     result = formatter.extract(content)
     assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
 
 def test_json_tool_extract_invalid_json():
     formatter = ToolFormatter(tool_format="json")
@@ -225,12 +280,14 @@ def test_json_tool_extract_invalid_json():
     result = formatter.extract(content)
     assert result == expected_result, f"Expected {expected_result}, but got {result}"
 
+
 def test_json_tool_extract_no_json():
     formatter = ToolFormatter(tool_format="json")
     content = "This is a test without any JSON."
     expected_result = "This is a test without any JSON."
     result = formatter.extract(content)
     assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
 
 def test_json_tool_extract_nested_json():
     formatter = ToolFormatter(tool_format="json")
@@ -239,12 +296,14 @@ def test_json_tool_extract_nested_json():
     result = formatter.extract(content)
     assert result == expected_result, f"Expected {expected_result}, but got {result}"
 
+
 def test_json_tool_extract_mixed_content():
     formatter = ToolFormatter(tool_format="json")
     content = "Some text ```{\"action\": \"test_action\", \"action_input\": {\"key\": \"value\"}}``` more text"
     expected_result = [("test_action", "{\"key\": \"value\"}")]
     result = formatter.extract(content)
     assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
 
 def test_json_tool_extract_mixed_no_quote_content():
     formatter = ToolFormatter(tool_format="json")
